@@ -77,7 +77,7 @@ main{padding:20px;max-width:1100px}
 <div id="app" class="app" hidden>
   <aside id="side">
     <div class="logo"><span class="cyl cyl-s" aria-hidden="true" style="vertical-align:middle;margin-right:6px"></span>CForge<small>Cyber Intelligence · Admin panel</small></div>
-    <a href="#dash">📊 Dashboard</a><a href="#users">👥 Users</a><a href="#comm">💬 Community</a><a href="#follows">🤝 Follows</a><a href="#log">🧾 Activity log</a><a href="#set">⚙️ Settings</a>
+    <a href="#dash">📊 Dashboard</a><a href="#users">👥 Users</a><a href="#comm">💬 Community</a><a href="#reel">🎬 Post a reel</a><a href="#exams">📝 Exams</a><a href="#log">🧾 Activity log</a><a href="#set">⚙️ Settings</a>
     <div class="sp"></div><button class="btn" id="so2">Sign out</button>
   </aside>
   <div>
@@ -99,7 +99,7 @@ import{getFirestore,doc,getDoc,setDoc,updateDoc,deleteDoc,collection,onSnapshot,
 const app=initializeApp({apiKey:"AIzaSyCiejOPNqtM5_yo4b70oSIwq83y-ZsdMSU",authDomain:"c-progarmin.firebaseapp.com",projectId:"c-progarmin",storageBucket:"c-progarmin.firebasestorage.app",messagingSenderId:"226410285609",appId:"1:226410285609:web:b6258a68d1eea824136a38"});
 const auth=getAuth(app),db=getFirestore(app);window.__adm=1;
 const $=s=>document.querySelector(s),esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const D={users:[],posts:[],comments:[],likes:[],stories:[],follows:[],logs:[]};
+const D={users:[],posts:[],comments:[],likes:[],stories:[],follows:[],logs:[],exams:[],results:[]};
 let me=null,subs=[],view="dash",st={q:"",f:"all",s:"new",pg:0,ct:"posts"},raf;
 const ago=t=>{const m=Math.floor((Date.now()-t)/6e4);return !t?"":m<1?"just now":m<60?m+"m ago":m<1440?Math.floor(m/60)+"h ago":Math.floor(m/1440)+"d ago"};
 const snip=(t,n=140)=>{t=String(t||"");return t.length>n?t.slice(0,n)+"…":t};
@@ -108,7 +108,7 @@ const show=n=>["boot","login","deny","app"].forEach(x=>$("#"+x).hidden=x!==n);
 const av=u=>u&&u.photo&&/^(data:image\/|https:\/\/)/.test(u.photo)?`<img class="av" src="${esc(u.photo)}" alt="">`:`<span class="av">${esc(((u&&(u.name||u.id))||"?")[0].toUpperCase())}</span>`;
 const byUid=id=>D.users.find(u=>u.uid===id),byId=h=>D.users.find(u=>u.id===h);
 const ask=(t,m,ok="Confirm",danger)=>new Promise(r=>{const o=$("#modal");o.innerHTML=`<div class="mbox" role="dialog"><h3>${esc(t)}</h3><p>${esc(m)}</p><div class="row"><button class="btn" id="mn">Cancel</button><button class="btn ${danger?"dg":"pr"}" id="my">${esc(ok)}</button></div></div>`;o.classList.add("on");$("#mn").onclick=()=>{o.classList.remove("on");r(false)};$("#my").onclick=()=>{o.classList.remove("on");r(true)}});
-const run=async(fn,ok)=>{try{await fn();toast(ok)}catch(e){toast(e.code==="permission-denied"?"Permission denied. Publish the admin rules and check your admins document.":(e.message||"Something went wrong"),1)}};
+const run=async(fn,ok)=>{try{await fn();toast(ok);return true}catch(e){toast(e.code==="permission-denied"?"Permission denied. Publish the new rules and check your admin access.":(e.message||"Something went wrong"),1);return false}};
 const sel=new Set();
 const updBar=()=>{const b=$("#bulk");if(!b)return;b.hidden=!(sel.size&&st.ct==="posts");const c=$("#bc");if(c)c.textContent=sel.size+" selected"};
 const form=(t,fs,ok="Save")=>new Promise(r=>{const o=$("#modal");o.innerHTML=`<form class="mbox" id="ff"><h3>${esc(t)}</h3>${fs.map(f=>`<label class="fl">${esc(f.l)}${f.t==="area"?`<textarea name="${f.k}" rows="5" maxlength="${f.max||1000}">${esc(f.v)}</textarea>`:f.t==="sel"?`<select name="${f.k}">${f.o.map(x=>`<option${x===f.v?" selected":""}>${esc(x)}</option>`).join("")}</select>`:f.t==="chk"?`<input type="checkbox" name="${f.k}">`:`<input name="${f.k}" type="${f.t==="num"?"number":"text"}" value="${esc(f.v)}"${f.t==="num"?` min="${f.min}" max="${f.max}"`:` maxlength="${f.max||200}"`}>`}</label>`).join("")}<div class="row"><button type="button" class="btn" id="fn">Cancel</button><button class="btn pr">${esc(ok)}</button></div></form>`;o.classList.add("on");
@@ -125,12 +125,12 @@ const bars=list=>{const ds=days14(),c=ds.map(d=>list.filter(x=>x.ts>=d&&x.ts<d+8
 const empty=t=>`<div class="empty">${t}</div>`;
 const fill=()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(()=>V[view]&&V[view].fill())};
 function start(){stop();const L=(n,k,mp)=>subs.push(onSnapshot(collection(db,n),sn=>{D[k]=sn.docs.map(d=>mp?mp(d):Object.assign({id:d.id},d.data()));fill()},e=>toast("Cannot read "+n+" ("+e.code+"). Publish the new Firestore rules.",1)));
- L("users","users",d=>Object.assign({},d.data(),{uid:d.id}));["posts","comments","likes","stories","follows"].forEach(n=>L(n,n));L("adminLogs","logs")}
+ L("users","users",d=>Object.assign({},d.data(),{uid:d.id}));["posts","comments","likes","stories","follows"].forEach(n=>L(n,n));L("adminLogs","logs");L("exams","exams");L("examResults","results")}
 function stop(){subs.forEach(f=>f());subs=[]}
 /* ---------- views ---------- */
 const V={
 dash:{t:"Dashboard",shell:()=>'<div id="body"></div>',fill(){const now=Date.now(),U=D.users,wk=U.filter(u=>u.ts>now-6048e5).length,avg=U.length?Math.round(U.reduce((a,u)=>a+(u.d||0),0)/U.length*10)/10:0,
-  C=[["Learners",U.length],["New this week",wk],["Avg days done",avg],["Total XP",U.reduce((a,u)=>a+(u.x||0),0)],["Posts",D.posts.length],["Comments",D.comments.length],["Stories (24h)",D.stories.filter(s=>s.ts>now-864e5).length],["Pending follows",D.follows.filter(f=>f.status==="pending").length]],
+  C=[["Learners",U.length],["New this week",wk],["Avg days done",avg],["Total XP",U.reduce((a,u)=>a+(u.x||0),0)],["Posts",D.posts.length],["Comments",D.comments.length],["Stories (24h)",D.stories.filter(s=>s.ts>now-864e5).length],["Exam attempts",D.results.length]],
   top=U.slice().sort((a,b)=>(b.x||0)-(a.x||0)).slice(0,5),
   feed=[].concat(U.map(u=>({ts:u.ts,i:"👤",h:`<b>${esc(u.name||u.id)}</b> joined`})),D.posts.map(p=>({ts:p.ts,i:"📝",h:`<b>${esc(p.who||p.h)}</b> posted: ${esc(snip(p.t,60))}`})),D.comments.map(c=>({ts:c.ts,i:"💬",h:`<b>@${esc(c.h)}</b> commented: ${esc(snip(c.t,50))}`})),D.follows.filter(f=>f.status==="accepted").map(f=>({ts:f.ts,i:"🤝",h:`@${esc(f.from)} followed @${esc(f.to)}`}))).filter(x=>x.ts).sort((a,b)=>b.ts-a.ts).slice(0,10);
   $("#body").innerHTML=`<div class="cards">${C.map(c=>`<div class="card"><span>${c[0]}</span><b>${c[1]}</b></div>`).join("")}</div>
@@ -155,12 +155,10 @@ comm:{t:"Community",shell:()=>`<div class="tabs">${[["posts","Posts"],["comments
   else{const L=D.stories.filter(m).sort((a,b)=>b.ts-a.ts).slice(0,60);
    h=L.length?L.map(s=>`<div class="row"><div class="grow"><b>${esc(s.who||s.h)}</b> <small>@${esc(s.h)} · ${ago(s.ts)}${s.ts<Date.now()-864e5?" · expired":""}</small><br>${esc(snip(s.t,200))}</div><div class="acts"><button class="btn sm" data-a="editst" data-id="${esc(s.id)}">Edit</button><button class="btn sm dg" data-a="delst" data-id="${esc(s.id)}">Delete</button></div></div>`).join(""):empty("No stories")}
   $("#body").innerHTML=h}},
-follows:{t:"Follows",shell:()=>'<div id="body"></div>',fill(){const L=D.follows.slice().sort((a,b)=>(b.ts||0)-(a.ts||0)).slice(0,80),ac=D.follows.filter(f=>f.status==="accepted").length;
-  $("#body").innerHTML=`<div class="cards"><div class="card"><span>Accepted</span><b>${ac}</b></div><div class="card"><span>Pending</span><b>${D.follows.length-ac}</b></div></div>`+(L.length?L.map(f=>`<div class="row"><div class="grow"><b>@${esc(f.from)}</b> → <b>@${esc(f.to)}</b> <span class="chip ${f.status==="accepted"?"ok":""}">${esc(f.status)}</span><br><small>${ago(f.ts)}</small></div><button class="btn sm dg" data-a="delfol" data-id="${esc(f.id)}">Remove</button></div>`).join(""):empty("No follows yet"))}},
 log:{t:"Activity log",shell:()=>'<div id="body"></div>',fill(){const L=D.logs.slice().sort((a,b)=>b.ts-a.ts).slice(0,100);$("#body").innerHTML=L.length?`<div class="panel"><ul class="feed">${L.map(l=>`<li><span>🧾</span><span><b>${esc(l.by)}</b> ${esc(l.a)} ${esc(l.t)}</span><small>${ago(l.ts)}</small></li>`).join("")}</ul></div>`:empty("No admin actions yet. Suspensions, resets and deletions appear here.")}},
 set:{t:"Settings",shell:()=>'<div id="body"></div>',fill(){$("#body").innerHTML=`<div class="panel" style="margin-bottom:12px"><h3>Your admin account</h3><p><small>${esc(me.email||"")}</small></p><input readonly value="${esc(me.uid)}" onclick="this.select()"></div>
   <div class="panel" style="margin-bottom:12px"><h3>Add another admin</h3><p><small>Firebase → Firestore Database → Data → collection <b>admins</b> → add a document whose Document ID is the person’s user ID (copy it from Users → View). Add one field, for example role = admin.</small></p></div>
-  <div class="panel" style="margin-bottom:12px"><h3>What you can do as admin</h3><p><small>Edit or delete any post, comment or story. Edit any profile (name, bio, visibility, days, XP, photo). Suspend or restore users. Delete all content of a user. Select several posts and delete them together. Every change is saved in the Activity log.</small></p></div>
+  <div class="panel" style="margin-bottom:12px"><h3>What you can do as admin</h3><p><small>Post reels to the Community, create exams that learners attend, and see their results. Edit or delete any post, comment or story. Edit any profile (name, bio, visibility, days, XP, photo). Suspend or restore users. Delete all content of a user. Select several posts and delete them together. Every change is saved in the Activity log.</small></p></div>
   <div class="panel"><h3>Export data</h3><div class="row" style="border:0;padding:0;background:none"><button class="btn" data-a="csv">Users (CSV)</button><button class="btn" data-a="jsonp">Posts (JSON)</button></div></div>`}}};
 /* ---------- actions ---------- */
 const A={
@@ -203,7 +201,59 @@ const A={
  ct(d){st.ct=d.v;st.q="";go()},
  csv(){const q=v=>'"'+String(v==null?"":v).replace(/"/g,'""')+'"',fc=fcounts();dl("cforge-users.csv",[["id","name","uid","days_done","xp","visibility","joined","suspended","followers","following"]].concat(D.users.map(u=>[u.id,u.name,u.uid,u.d||0,u.x||0,u.vis||"public",u.ts?new Date(u.ts).toISOString():"",u.suspended?"yes":"no",fc.a[u.id]||0,fc.b[u.id]||0])).map(r=>r.map(q).join(",")).join("\n"),"text/csv")},
  jsonp(){dl("cforge-posts.json",JSON.stringify(D.posts,null,2),"application/json")}};
-document.addEventListener("click",e=>{const b=e.target.closest("[data-a]");if(b&&A[b.dataset.a])A[b.dataset.a](b.dataset);if(e.target.id==="sheet")$("#sheet").classList.remove("on")});
+document.addEventListener("click",e=>{const b=e.target.closest("[data-a]");if(b&&A[b.dataset.a])A[b.dataset.a](b.dataset,b);if(e.target.id==="sheet")$("#sheet").classList.remove("on")});
+/* ---------- exams & reels ---------- */
+const parseQs=t=>{const out=[];String(t).split(/\n\s*\n/).forEach(b=>{const ls=b.split("\n").map(x=>x.trim()).filter(Boolean);if(!ls.length)return;const q={q:"",o:[],a:-1,e:""};
+ ls.forEach(l=>{let m;if(m=l.match(/^([A-Da-d])[\).:]\s*(.+)$/)){let o=m[2].trim();const star=/\*\s*$/.test(o);if(star)o=o.replace(/\*\s*$/,"").trim();q.o.push(o);if(star)q.a=q.o.length-1}
+  else if(m=l.match(/^(?:answer|ans|correct)\s*[:=-]\s*([A-Da-d])/i)){q.a=m[1].toUpperCase().charCodeAt(0)-65}
+  else if(m=l.match(/^(?:explain|explanation|why)\s*[:=-]\s*(.+)$/i)){q.e=m[1].trim()}
+  else if(!q.o.length){q.q+=(q.q?" ":"")+l.replace(/^(?:q\s*\d*\s*[:.)]|\d+\s*[.)])\s*/i,"")}});
+ if(q.q&&q.o.length>=2)out.push(Object.assign(q,{a:Math.max(0,q.a)}))});return out};
+const qBlock=(q,i)=>`<div class="panel qb" style="margin-bottom:10px"><label class="fl"><span class="qn">Question ${i+1}</span><input class="eq" value="${esc(q.q)}" maxlength="300"></label>${[0,1,2,3].map(j=>`<label class="fl">Option ${"ABCD"[j]}<input class="eo" value="${esc((q.o||[])[j]||"")}" maxlength="200"></label>`).join("")}<label class="fl">Correct answer<select class="ea">${[0,1,2,3].map(j=>`<option value="${j}"${q.a===j?" selected":""}>${"ABCD"[j]}</option>`).join("")}</select></label><label class="fl">Explanation (optional)<input class="ee" value="${esc(q.e||"")}" maxlength="300"></label><button class="btn sm dg" data-a="exrm">Remove question</button></div>`;
+const renum=()=>document.querySelectorAll("#xq .qn").forEach((s,i)=>s.textContent="Question "+(i+1));
+function examEditor(ex){const e=ex||{title:"",desc:"",mins:10,pass:50,status:"live",qs:[]};
+ $("#sheet").innerHTML=`<div class="sbox"><h3 style="margin-bottom:10px">${ex?"Edit exam":"Create exam"}</h3><label class="fl">Title<input id="xt" value="${esc(e.title)}" maxlength="80"></label><label class="fl">Statement / instructions for learners<textarea id="xd" rows="4" maxlength="1000">${esc(e.desc)}</textarea></label>
+ <div class="tools"><label class="fl">Minutes<input id="xm" type="number" min="1" max="180" value="${e.mins}"></label><label class="fl">Pass mark %<input id="xp" type="number" min="0" max="100" value="${e.pass}"></label><label class="fl">Status<select id="xs"><option value="live"${e.status==="live"?" selected":""}>Live: learners can attend</option><option value="closed"${e.status!=="live"?" selected":""}>Closed: hidden</option></select></label></div>
+ <div id="xq">${e.qs.map(qBlock).join("")}</div><button class="btn" data-a="exadd" style="margin-bottom:10px">+ Add question</button>
+ <details style="margin:6px 0 12px"><summary class="msg">Quick add: paste many questions</summary><p class="msg">Separate questions with a blank line. Put * after the correct option. Example:<br>What is 2+2?<br>A) 3<br>B) 4*<br>C) 5<br>Explain: 2+2 is 4</p><textarea id="xi" rows="8" placeholder="Paste questions here"></textarea><button class="btn sm" data-a="eximp" style="margin-top:6px">Add these questions</button></details>
+ <div class="row" style="border:0;padding:0;background:none;justify-content:flex-end"><button class="btn" id="xc">Cancel</button><button class="btn pr" id="xsv">Save exam</button></div></div>`;
+ $("#sheet").classList.add("on");$("#xc").onclick=()=>$("#sheet").classList.remove("on");
+ $("#xsv").onclick=async()=>{const title=$("#xt").value.trim();if(!title){toast("Add a title",1);return}
+  const qs=[];let bad=0;document.querySelectorAll("#xq .qb").forEach((b,i)=>{if(bad)return;const raw=[...b.querySelectorAll(".eo")].map(x=>x.value.trim()),a=+b.querySelector(".ea").value,q=b.querySelector(".eq").value.trim();
+   if(!q||!raw[a]||raw.filter(Boolean).length<2){bad=i+1;return}
+   const o=raw.filter(Boolean),na=raw.slice(0,a).filter(Boolean).length;qs.push({q,o,a:na,e:b.querySelector(".ee").value.trim()})});
+  if(bad){toast("Question "+bad+": add the question, at least 2 options, and fill the correct option",1);return}
+  if(!qs.length){toast("Add at least one question",1);return}
+  const data={title,desc:$("#xd").value.trim(),mins:Math.max(1,Math.min(180,+$("#xm").value||10)),pass:Math.max(0,Math.min(100,+$("#xp").value||0)),status:$("#xs").value,qs,ts:ex?ex.ts:Date.now(),upd:Date.now(),by:me.email||me.uid};
+  const ok=await run(()=>setDoc(ex?doc(db,"exams",ex.id):doc(collection(db,"exams")),data),"Exam saved");
+  if(ok){log(ex?"edited exam":"created exam",title);$("#sheet").classList.remove("on")}}}
+Object.assign(A,{
+ newex(){examEditor()},
+ exedit(d){const e=D.exams.find(x=>x.id===d.id);if(e)examEditor(e)},
+ exadd(){$("#xq").insertAdjacentHTML("beforeend",qBlock({q:"",o:[],a:0},document.querySelectorAll("#xq .qb").length));renum()},
+ exrm(d,b){b.closest(".qb").remove();renum()},
+ eximp(){const qs=parseQs($("#xi").value);if(!qs.length){toast("No questions found. Check the format.",1);return}
+  const n=document.querySelectorAll("#xq .qb").length;$("#xq").insertAdjacentHTML("beforeend",qs.map((q,i)=>qBlock(q,n+i)).join(""));renum();$("#xi").value="";toast(qs.length+" question(s) added")},
+ async extog(d){const e=D.exams.find(x=>x.id===d.id);if(!e)return;const live=e.status!=="live";await run(()=>updateDoc(doc(db,"exams",e.id),{status:live?"live":"closed"}),live?"Exam is live":"Exam closed");log(live?"opened exam":"closed exam",e.title)},
+ async exdel(d){const e=D.exams.find(x=>x.id===d.id);if(!e)return;if(!await ask("Delete exam?","The exam and all learner results for it will be deleted permanently.","Delete",true))return;
+  await run(()=>commit([doc(db,"exams",e.id)].concat(D.results.filter(r=>r.exam===e.id).map(r=>doc(db,"examResults",r.id)))),"Exam deleted");log("deleted exam",e.title)},
+ exres(d){const e=D.exams.find(x=>x.id===d.id);if(!e)return;const R=D.results.filter(r=>r.exam===e.id).sort((a,b)=>b.pct-a.pct||a.ts-b.ts);
+  $("#sheet").innerHTML=`<div class="sbox"><div class="row" style="border:0;padding:0;background:none"><div class="grow"><b>${esc(e.title)}</b><br><small>${R.length} attempt(s) · pass mark ${e.pass}%</small></div><button class="btn sm" id="sx">✕</button></div>
+  <div class="row" style="border:0;padding:0;background:none;margin:8px 0"><button class="btn sm" data-a="excsv" data-id="${esc(e.id)}">Export CSV</button></div>
+  ${R.length?R.map((r,i)=>`<div class="row"><div class="grow"><b>${i+1}. ${esc(r.name||r.h)}</b> <small>@${esc(r.h)} · ${ago(r.ts)}</small><br><span class="chip ${r.pass?"ok":"bad"}">${r.pass?"Passed":"Not passed"}</span><span class="chip">${r.score}/${r.total}</span><span class="chip">${r.pct}%</span></div><button class="btn sm dg" data-a="exretake" data-id="${esc(r.id)}">Allow retake</button></div>`).join(""):empty("No one has attempted this exam yet")}</div>`;
+  $("#sheet").classList.add("on");$("#sx").onclick=()=>$("#sheet").classList.remove("on")},
+ excsv(d){const e=D.exams.find(x=>x.id===d.id),q=v=>'"'+String(v==null?"":v).replace(/"/g,'""')+'"';if(!e)return;dl("exam-"+e.title.replace(/\W+/g,"-")+".csv",[["rank","name","id","score","total","percent","result","date"]].concat(D.results.filter(r=>r.exam===e.id).sort((a,b)=>b.pct-a.pct).map((r,i)=>[i+1,r.name,r.h,r.score,r.total,r.pct,r.pass?"passed":"not passed",new Date(r.ts).toISOString()])).map(r=>r.map(q).join(",")).join("\n"),"text/csv")},
+ async exretake(d){const r=D.results.find(x=>x.id===d.id);if(!r)return;if(!await ask("Allow retake?",`@${r.h}’s result will be deleted so they can attempt the exam again.`,"Delete result",true))return;await run(()=>deleteDoc(doc(db,"examResults",r.id)),"Result removed");log("allowed retake for","@"+r.h+" ("+r.examTitle+")");$("#sheet").classList.remove("on")},
+ async postreel(){const t=$("#rt").value.trim(),im=$("#ri").value.trim(),lk=$("#rl").value.trim();if(!t&&!im){toast("Write something or add an image link",1);return}
+  if((im&&!/^https:\/\//.test(im))||(lk&&!/^https:\/\//.test(lk))){toast("Links must start with https://",1);return}
+  const ok=await run(()=>setDoc(doc(collection(db,"posts")),{h:"admin",uid:me.uid,who:"CForge Admin",t,ts:Date.now(),vis:"Public",adm:true,img:im,lk}),"Posted to Community");
+  if(ok){log("posted a reel",snip(t,40));$("#rt").value="";$("#ri").value="";$("#rl").value=""}}});
+Object.assign(V,{
+ reel:{t:"Post a reel",shell:()=>`<div class="panel" style="margin-bottom:14px"><h3>New reel for the Community</h3><p class="msg" style="margin-bottom:10px">Only admins can post. Your reel appears at the top of every learner’s Community page.</p><label class="fl">Text<textarea id="rt" rows="4" maxlength="500" placeholder="Write your reel…"></textarea></label><label class="fl">Image link (optional, https)<input id="ri" type="url" placeholder="https://…"></label><label class="fl">Button link (optional, https)<input id="rl" type="url" placeholder="https://… video or website"></label><button class="btn pr" data-a="postreel">Post to Community</button></div><h3 style="margin:6px 0 10px">Your reels</h3><div id="body"></div>`,
+  fill(){const L=D.posts.filter(p=>p.adm).sort((a,b)=>b.ts-a.ts);$("#body").innerHTML=L.length?L.map(p=>`<div class="row"><div class="grow">${esc(snip(p.t,300))}<br><small>${ago(p.ts)}${p.img?" · image":""}${p.lk?" · link":""}</small></div><div class="acts"><button class="btn sm" data-a="editpost" data-id="${esc(p.id)}">Edit</button><button class="btn sm dg" data-a="delpost" data-id="${esc(p.id)}">Delete</button></div></div>`).join(""):empty("You haven’t posted any reels yet")}},
+ exams:{t:"Exams",shell:()=>'<div class="tools"><button class="btn pr" data-a="newex">+ Create exam</button></div><div id="body"></div>',
+  fill(){const L=D.exams.slice().sort((a,b)=>(b.ts||0)-(a.ts||0));$("#body").innerHTML=L.length?L.map(e=>{const R=D.results.filter(r=>r.exam===e.id),avg=R.length?Math.round(R.reduce((a,r)=>a+r.pct,0)/R.length):0;
+   return `<div class="row"><div class="grow"><b>${esc(e.title)}</b> <span class="chip ${e.status==="live"?"ok":"bad"}">${e.status==="live"?"Live":"Closed"}</span><br><small>${(e.qs||[]).length} questions · ${e.mins} min · pass ${e.pass}% · ${R.length} attempts · avg ${avg}%</small></div><div class="acts"><button class="btn sm" data-a="exres" data-id="${esc(e.id)}">Results</button><button class="btn sm" data-a="exedit" data-id="${esc(e.id)}">Edit</button><button class="btn sm" data-a="extog" data-id="${esc(e.id)}">${e.status==="live"?"Close":"Go live"}</button><button class="btn sm dg" data-a="exdel" data-id="${esc(e.id)}">Delete</button></div></div>`}).join(""):empty("No exams yet. Tap Create exam. Live exams appear on every learner’s Community page.")}}});
 /* ---------- router & auth ---------- */
 function go(){const h=(location.hash||"#dash").slice(1);view=V[h]?h:"dash";$("#main").innerHTML=V[view].shell();V[view].bind&&V[view].bind();V[view].fill();$("#ttl").textContent=V[view].t;
  document.querySelectorAll("aside a").forEach(a=>a.classList.toggle("on",a.getAttribute("href")==="#"+view));$("#side").classList.remove("open")}
